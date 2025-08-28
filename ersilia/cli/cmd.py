@@ -51,6 +51,13 @@ class Command(object):
         m = importlib.import_module("ersilia.cli.commands.info")
         m.info_cmd()
 
+    def performance(self):
+        """
+        Show performance metrics.
+        """
+        m = importlib.import_module("ersilia.cli.commands.performance")
+        m.performance_cmd()
+
     def fetch(self):
         """
         Fetch data.
