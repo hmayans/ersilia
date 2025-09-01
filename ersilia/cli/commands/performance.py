@@ -56,8 +56,7 @@ def performance_cmd():
 
                          Example usage:
                             ersilia performance eos4e40
-                            ersilia performance eos4e40 --samples 200 --detailed
-                            ersilia performance eos4e40 --output-dir ./reports
+                            ersilia performance eos4e40 --samples 200 
                          """)
     @click.argument("model", type=click.STRING)
     @click.option(
@@ -67,14 +66,6 @@ def performance_cmd():
         type=click.INT, 
         help="Number of input samples for testing (default: 100)"
         )
-    # Add the new flag for tracking the serve session
-    # @click.option(
-    #     "--output-dir",
-    #     "-o",
-    #     default=None,
-    #     type=str,
-    #     help="Directory to save performance results and CSV files"
-    #     )
 
     def performance(model, samples):
         """Run performance analysis on a specified model."""
@@ -86,8 +77,6 @@ def performance_cmd():
         close = close_cmd()
 
         echo(f"Running performance analysis on model: {model}")
-
-        model = ErsiliaModel(model)
 
         #temporal files
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -108,29 +97,43 @@ def performance_cmd():
 
         # 4. Run the model
         echo("Running model and measuring performance...")
-        client = docker.from_env()
-        container = client.containers.list(filters={"ancestor": model})[0]
+        try:
+            client = docker.from_env()
+            containers = client.containers.list(filters={"ancestor": model})
+            container = containers[0] if containers else None
+        except Exception:
+            container = None
+
 
         cpu_samples, mem_samples = [], []
         start_time = time.time()
 
         # Start model run
-        run.callback(input=input_file, output=output_file, batch_size=100)
+        run.callback(i=input_file, o=output_file, batch_size=100)
 
         # Collect one snapshot after run finishes
-        stats = container.stats(stream=False)
-        cpu_percent = stats["cpu_stats"]["cpu_usage"]["total_usage"] / stats["cpu_stats"]["system_cpu_usage"] * 100
-        mem_usage = stats["memory_stats"]["usage"]
-
-        cpu_samples.append(cpu_percent)
-        mem_samples.append(mem_usage)
+        if container:
+            try:
+                stats = container.stats(stream=False)
+                if not isinstance(stats, dict):
+                    stats = next(stats, None)
+                if stats:
+                    cpu_percent = (
+                        stats["cpu_stats"]["cpu_usage"]["total_usage"]
+                        / stats["cpu_stats"]["system_cpu_usage"] * 100
+                    )
+                    mem_usage = stats["memory_stats"]["usage"]
+                    cpu_samples.append(cpu_percent)
+                    mem_samples.append(mem_usage)
+            except Exception:
+                pass
 
         end_time = time.time()
         runtime_duration = end_time - start_time
 
         # 5. Close the model
         echo("Closing the model...")
-        close.callback()
+        close.callback(model)
         echo("Model closed successfully.")
 
         # 6. Report
