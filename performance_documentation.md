@@ -1,3 +1,7 @@
+**NOTE**
+this code has been developed for exercise purpose. Right now performance command is not included in Ersilia's CLI.
+The other comands are callbacked but the arguments for them where not included, therefore the file will not pass the test for **eos4e40**.
+
 # Ersilia Performance Command
 
 ## Overview
