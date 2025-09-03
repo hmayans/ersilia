@@ -56,10 +56,8 @@ def test_performance_cmd(
 
     print(result.output) 
 
-    # Command should exit cleanly
     assert result.exit_code == 0
 
-    # All key steps should have been called
     assert mock_fetch.callback.called
     assert mock_serve.callback.called
     assert mock_example.callback.called
