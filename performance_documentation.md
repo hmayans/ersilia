@@ -173,10 +173,9 @@ This test should cover aside of the basic command execution, the docker integrat
 5. https://docs.docker.com/reference/cli/docker/container/stats/
 
 
-- [Ersilia Documentation](https://ersilia.gitbook.io/)
-- [Ersilia CLI Book](https://ersilia.gitbook.io/ersilia-book/)
 - [Docker Container Stats API](https://docs.docker.com/reference/cli/docker/container/stats/)
 - [Docker Python Client](https://docker-py.readthedocs.io/en/stable/containers.html)
+- [MagicMock](https://docs.python.org/3/library/unittest.mock.html)
 
 ### Implementation References
 - [Docker Container CPU Usage Calculation](https://stackoverflow.com/questions/30271942/get-docker-container-cpu-usage-as-percentage): code in JAVA
@@ -202,3 +201,4 @@ stats = container.stats(stream=False)
 
 - [Python Docker Container Monitoring](https://medium.com/@martinkarlsson.io/control-and-monitor-your-docker-containers-with-python-7a3bdc4b88fa): *Logic written in words*
 - [CPU and Memory Monitoring Alternatives](https://stackoverflow.com/questions/62404393/how-to-calculate-the-amount-of-cpu-and-memory-used-by-a-python-script)
+- [Yield vs Return pytest](https://stackoverflow.com/questions/77318902/why-using-yield-instead-of-return-in-pytest-fixtures)
