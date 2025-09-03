@@ -161,7 +161,29 @@ Run the test suite:
 python -m pytest test/cli/test_performance.py -v
 ```
 
-This test should cover aside of the basic command execution, the docker integration, the error scenarios and the performance metric calculations.
+Two tests are included in this file. The original test should cover aside of the basic command execution, the docker integration, the error scenarios and the performance metric calculations. The scond one is specific for model `eos4e40`. Both tests PASSED on Wednesday 3rd September at 9.20pm.
+
+```bash
+========================================================================= test session starts ==========================================================================platform linux -- Python 3.10.18, pytest-8.4.1, pluggy-1.6.0 -- /home/helen/miniconda3/envs/ersilia/bin/python3.10
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/helen/OneDrive/Documentos/Bioinformatics/ersilia
+configfile: pyproject.toml
+collected 2 items
+
+test/cli/test_performance.py::test_performance_cmd PASSED                                                                                                        [ 50%]
+test/cli/test_performance.py::test_performance_no_mock PASSED                                                                                                    [100%]
+╭─────── Summary ───────╮
+│ No results available. │
+╰───────────────────────╯
+
+===================================================================== 2 passed in 64.31s (0:01:04) =====================================================================
+```
+
+When running the test for the specific model, this error appeared for each command:
+```bash
+Performance analysis failed: serve_cmd.<locals>.serve() missing 1 required positional argument: 'quiet'
+```
+Therefore `quiet = True` has been added in each cmd.callback().
 
 ## Resources
 
