@@ -54,6 +54,8 @@ def test_performance_cmd(
     runner = CliRunner()
     result = runner.invoke(performance_cmd(), [MODEL_ID])
 
+    print(result.output) 
+
     # Command should exit cleanly
     assert result.exit_code == 0
 
@@ -63,3 +65,15 @@ def test_performance_cmd(
     assert mock_example.callback.called
     assert mock_run.callback.called
     assert mock_close.callback.called
+
+def test_performance_no_mock():
+    runner = CliRunner()
+    result = runner.invoke(performance_cmd(), [MODEL_ID])
+
+    print(result.output)
+
+    # Command should exit cleanly
+    assert result.exit_code == 0
+
+    assert "Performance Report" in result.output
+    assert f'Model:    {MODEL_ID}' in result.output

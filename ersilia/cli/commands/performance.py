@@ -92,15 +92,42 @@ def performance_cmd():
             try:
                 # 1. Fetch the model
                 echo("Fetching the model...")
-                fetch.callback(model_id, from_dockerhub=True)
+                # Assuming default values for the missing arguments
+                fetch.callback(
+                    model=model_id,
+                    overwrite=False,  
+                    from_dir=None,    
+                    from_github=None, 
+                    version=None,     
+                    from_s3=None,     
+                    from_hosted=None, 
+                    hosted_url=None,  
+                    with_bentoml=False, 
+                    with_fastapi=False, 
+                    from_dockerhub=True,
+                    quiet=True
+                )
+
 
                 # 2. Serve the model
                 echo("Serving the model...")
-                serve.callback(model_id)
+                #serve.callback(model_id)
+                serve.callback(
+                    model=model_id,
+                    port=6379,
+                    track=False,
+                    tracking_use_case=None,
+                    enable_local_cache=False,
+                    local_cache_only=False,
+                    cloud_cache_only=False,
+                    cache_only=False,
+                    max_memory=None,
+                    quiet=True
+                )
 
                 # 3. Get example inputs
                 echo(f"Generating {samples} example inputs...")
-                example.callback(model_id, num_samples=samples, file_name=input_file)
+                example.callback(model=model_id, n_samples=samples, file_name=input_file, mode="random",quiet=True)
 
                 # 4. Setup Docker monitoring
                 container = None
@@ -122,7 +149,7 @@ def performance_cmd():
                 start_time = time.time()
 
                 # Run the model
-                run.callback(input=input_file, output=output_file)
+                run.callback(input=input_file, output=output_file, batch_size=100, quiet=True)
 
                 # Collect performance metrics after run
                 if container:
@@ -151,7 +178,7 @@ def performance_cmd():
 
                 # 6. Close the model
                 echo("Closing the model...")
-                close.callback()
+                close.callback(quiet=True)
                 echo("Model closed successfully.")
 
                 # 7. Calculate and display results

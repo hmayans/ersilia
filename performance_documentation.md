@@ -1,3 +1,7 @@
+**NOTE**
+this code has been developed for exercise purpose. Right now performance command is not included in Ersilia's CLI.
+The other comands are callbacked but the arguments for them where not included, therefore the file will not pass the test for **eos4e40**.
+
 # Ersilia Performance Command
 
 ## Overview
@@ -157,7 +161,29 @@ Run the test suite:
 python -m pytest test/cli/test_performance.py -v
 ```
 
-This test should cover aside of the basic command execution, the docker integration, the error scenarios and the performance metric calculations.
+Two tests are included in this file. The original test should cover aside of the basic command execution, the docker integration, the error scenarios and the performance metric calculations. The scond one is specific for model `eos4e40`. Both tests PASSED on Wednesday 3rd September at 9.20pm.
+
+```bash
+========================================================================= test session starts ==========================================================================platform linux -- Python 3.10.18, pytest-8.4.1, pluggy-1.6.0 -- /home/helen/miniconda3/envs/ersilia/bin/python3.10
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/helen/OneDrive/Documentos/Bioinformatics/ersilia
+configfile: pyproject.toml
+collected 2 items
+
+test/cli/test_performance.py::test_performance_cmd PASSED                                                                                                        [ 50%]
+test/cli/test_performance.py::test_performance_no_mock PASSED                                                                                                    [100%]
+╭─────── Summary ───────╮
+│ No results available. │
+╰───────────────────────╯
+
+===================================================================== 2 passed in 64.31s (0:01:04) =====================================================================
+```
+
+When running the test for the specific model, this error appeared for each command:
+```bash
+Performance analysis failed: serve_cmd.<locals>.serve() missing 1 required positional argument: 'quiet'
+```
+Therefore `quiet = True` has been added in each cmd.callback().
 
 ## Resources
 
@@ -169,10 +195,9 @@ This test should cover aside of the basic command execution, the docker integrat
 5. https://docs.docker.com/reference/cli/docker/container/stats/
 
 
-- [Ersilia Documentation](https://ersilia.gitbook.io/)
-- [Ersilia CLI Book](https://ersilia.gitbook.io/ersilia-book/)
 - [Docker Container Stats API](https://docs.docker.com/reference/cli/docker/container/stats/)
 - [Docker Python Client](https://docker-py.readthedocs.io/en/stable/containers.html)
+- [MagicMock](https://docs.python.org/3/library/unittest.mock.html)
 
 ### Implementation References
 - [Docker Container CPU Usage Calculation](https://stackoverflow.com/questions/30271942/get-docker-container-cpu-usage-as-percentage): code in JAVA
@@ -198,3 +223,4 @@ stats = container.stats(stream=False)
 
 - [Python Docker Container Monitoring](https://medium.com/@martinkarlsson.io/control-and-monitor-your-docker-containers-with-python-7a3bdc4b88fa): *Logic written in words*
 - [CPU and Memory Monitoring Alternatives](https://stackoverflow.com/questions/62404393/how-to-calculate-the-amount-of-cpu-and-memory-used-by-a-python-script)
+- [Yield vs Return pytest](https://stackoverflow.com/questions/77318902/why-using-yield-instead-of-return-in-pytest-fixtures)
