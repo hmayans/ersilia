@@ -1,6 +1,5 @@
+import os
 import click
-
-from ersilia.core import model
 
 from .fetch import fetch_cmd
 from .serve import serve_cmd
@@ -17,6 +16,12 @@ import time
 import statistics
 import docker
 from datetime import datetime
+import tempfile
+
+try:
+    DOCKER_AVAILABLE = True
+except ImportError:
+    DOCKER_AVAILABLE = False
 
 def performance_cmd():
     """ 
@@ -58,7 +63,7 @@ def performance_cmd():
                             ersilia performance eos4e40
                             ersilia performance eos4e40 --samples 200 
                          """)
-    @click.argument("model", type=click.STRING)
+    @click.argument("model_id", type=click.STRING)
     @click.option(
         "--samples", 
         "-n", 
@@ -67,7 +72,7 @@ def performance_cmd():
         help="Number of input samples for testing (default: 100)"
         )
 
-    def performance(model, samples):
+    def performance(model_id, samples):
         """Run performance analysis on a specified model."""
 
         fetch = fetch_cmd()
@@ -76,75 +81,97 @@ def performance_cmd():
         run = run_cmd()
         close = close_cmd()
 
-        echo(f"Running performance analysis on model: {model}")
+        echo(f"Running performance analysis on model: {model_id}")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            input_file = os.path.join(temp_dir, f"performance_input_{model_id}_{timestamp}.csv")
+            output_file = os.path.join(temp_dir, f"performance_output_{model_id}_{timestamp}.csv")
 
-        #temporal files
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        input_file = f"performance_input_{model}_{timestamp}.csv"
-        output_file = f"performance_output_{model}_{timestamp}.csv"
-
-        # 1. Fetch the model
-        echo("Fetching the model...")
-        fetch.callback(model, from_dockerhub=True)
-
-        # 2. Serve the model
-        echo("Serving the model...")
-        serve.callback(model)
-
-        # 3. Get example inputs
-        echo(f"Generating {samples} example inputs...")
-        example.callback(model, num_samples=samples, file_name=input_file)
-
-        # 4. Run the model
-        echo("Running model and measuring performance...")
-        try:
-            client = docker.from_env()
-            containers = client.containers.list(filters={"ancestor": model})
-            container = containers[0] if containers else None
-        except Exception:
-            container = None
-
-
-        cpu_samples, mem_samples = [], []
-        start_time = time.time()
-
-        # Start model run
-        run.callback(i=input_file, o=output_file, batch_size=100)
-
-        # Collect one snapshot after run finishes
-        if container:
+            cpu_samples, mem_samples = [], []
+            
             try:
-                stats = container.stats(stream=False)
-                if not isinstance(stats, dict):
-                    stats = next(stats, None)
-                if stats:
-                    cpu_percent = (
-                        stats["cpu_stats"]["cpu_usage"]["total_usage"]
-                        / stats["cpu_stats"]["system_cpu_usage"] * 100
-                    )
-                    mem_usage = stats["memory_stats"]["usage"]
-                    cpu_samples.append(cpu_percent)
-                    mem_samples.append(mem_usage)
-            except Exception:
-                pass
+                # 1. Fetch the model
+                echo("Fetching the model...")
+                fetch.callback(model_id, from_dockerhub=True)
 
-        end_time = time.time()
-        runtime_duration = end_time - start_time
+                # 2. Serve the model
+                echo("Serving the model...")
+                serve.callback(model_id)
 
-        # 5. Close the model
-        echo("Closing the model...")
-        close.callback(model)
-        echo("Model closed successfully.")
+                # 3. Get example inputs
+                echo(f"Generating {samples} example inputs...")
+                example.callback(model_id, num_samples=samples, file_name=input_file)
 
-        # 6. Report
-        cpu_avg = statistics.mean(cpu_samples) if cpu_samples else 0.0
-        mem_peak = max(mem_samples) if mem_samples else 0
+                # 4. Setup Docker monitoring
+                container = None
+                if DOCKER_AVAILABLE:
+                    try:
+                        client = docker.from_env()
+                        containers = client.containers.list()
+                        # Find container with model_id in name or image
+                        for c in containers:
+                            if (model_id.lower() in c.name.lower() or 
+                                model_id.lower() in str(c.image).lower()):
+                                container = c
+                                break
+                    except Exception as e:
+                        echo(f"Warning: Could not connect to Docker: {e}")
 
-        print("\n————— Performance Report —————")
-        print(f"Model:    {model}")
-        print(f"CPU Avg:  {cpu_avg:.2f}%")
-        print(f"Mem Peak: {mem_peak/1024/1024:.0f} MiB")
-        print(f"Duration: {runtime_duration:.2f}s")
-        print("—————————————————————————————")
+                # 5. Run the model and measure performance
+                echo("Running model and measuring performance...")
+                start_time = time.time()
+
+                # Run the model
+                run.callback(input=input_file, output=output_file)
+
+                # Collect performance metrics after run
+                if container:
+                    try:
+                        stats = container.stats(stream=False)
+                        
+                        # Calculate CPU percentage
+                        cpu_delta = (stats["cpu_stats"]["cpu_usage"]["total_usage"] - 
+                                   stats["precpu_stats"]["cpu_usage"]["total_usage"])
+                        system_delta = (stats["cpu_stats"]["system_cpu_usage"] - 
+                                      stats["precpu_stats"]["system_cpu_usage"])
+                        
+                        if system_delta > 0:
+                            cpu_percent = (cpu_delta / system_delta) * 100.0
+                            cpu_samples.append(cpu_percent)
+                        
+                        # Memory usage
+                        mem_usage = stats["memory_stats"]["usage"]
+                        mem_samples.append(mem_usage)
+                        
+                    except Exception as e:
+                        echo(f"Warning: Could not collect performance stats: {e}")
+
+                end_time = time.time()
+                runtime_duration = end_time - start_time
+
+                # 6. Close the model
+                echo("Closing the model...")
+                close.callback()
+                echo("Model closed successfully.")
+
+                # 7. Calculate and display results
+                cpu_avg = statistics.mean(cpu_samples) if cpu_samples else 0.0
+                mem_peak = max(mem_samples) if mem_samples else 0
+
+                print("\n————— Performance Report —————")
+                print(f"Model:    {model_id}")
+                print(f"CPU Avg:  {cpu_avg:.2f}%")
+                print(f"Mem Peak: {mem_peak/1024/1024:.0f} MiB")
+                print(f"Duration: {runtime_duration:.2f}s")
+                print("—————————————————————————————")
+
+            except Exception as e:
+                echo(f"Performance analysis failed: {str(e)}")
+                # Try to cleanup
+                try:
+                    close.callback()
+                except:
+                    pass
+                raise
 
     return performance
